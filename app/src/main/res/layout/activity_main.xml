@@ -1,3 +1,7 @@
+<!--activity_main.xml includes a ListView which will contain details of devices found and a Button which
+we’ll use to trigger the scanning process. The ListView needs some XML which defines the structure of
+each member of the list as well, so we’ll add that next.-->
+
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"

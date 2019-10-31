@@ -7,6 +7,7 @@ import androidx.core.app.ActivityCompat;
 
 import android.Manifest;
 import android.bluetooth.BluetoothDevice;
+import android.bluetooth.le.ScanFilter;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
@@ -30,6 +31,7 @@ import com.example.bletest.bluetooth.ScanResultsConsumer;
 import com.example.bletest.ui.PeripheralControlActivity;
 
 import java.util.ArrayList;
+import java.util.List;
 
 
 public class MainActivity extends AppCompatActivity implements ScanResultsConsumer {
@@ -94,13 +96,15 @@ public class MainActivity extends AppCompatActivity implements ScanResultsConsum
     }
 
     // Changes the text on the scan screen’s button according to whether or not
-    //scanning is currently being performed
+    // scanning is currently being performed
     private void setScanState(boolean value) {
         ble_scanning = value;
         ((Button) this.findViewById(R.id.scanButton)).setText(value ? Constants.STOP_SCANNING :
                 Constants.FIND);
     }
 
+    // Any details passed to it by the BleScanner object are stored in the ListAdapter and are
+    // shown on the UI if not already there.
     @Override
     public void candidateBleDevice(final BluetoothDevice device, byte[] scan_record, int rssi) {
         runOnUiThread(new Runnable() {
@@ -113,6 +117,9 @@ public class MainActivity extends AppCompatActivity implements ScanResultsConsum
         });
     }
 
+    // The BleScanner object will tell our MainActivity object whenever it starts to perform
+    // scanning or stops scanning by calling the corresponding methods of the ScanResultsConsumer
+    // interface which MainActivity implements
     @Override
     public void scanningStarted() {
         setScanState(true);
@@ -128,8 +135,9 @@ public class MainActivity extends AppCompatActivity implements ScanResultsConsum
 
 
     // A list adapter that serves to store a list of BluetoothDevices that are found during
-    //scanning, and provides the data for the list view. The adapter will use the list_row.xml layout we added
-    //earlier and return that view with the name of the found device for the list to display in the row.
+    // scanning, and provides the data for the list view. The adapter will use the list_row.xml
+    // layout we added earlier and return that view with the name of the found device for the list
+    // to display in the row.
     private class ListAdapter extends BaseAdapter {
         private ArrayList<BluetoothDevice> ble_devices;
         public ListAdapter() {
@@ -187,9 +195,12 @@ public class MainActivity extends AppCompatActivity implements ScanResultsConsum
         }
     }
 
+    // Respond to the Find button being pressed
     public void onScan(View view) {
         if (!ble_scanner.isScanning()) {
             device_count=0;
+            // It's checking the version of Android we’re running on and
+            // if it’s greater than or equal to 6(M)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                 if (checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION)
                         != PackageManager.PERMISSION_GRANTED) {
@@ -200,7 +211,7 @@ public class MainActivity extends AppCompatActivity implements ScanResultsConsum
                             permissions_granted = true;
                 }
             } else {
-// the ACCESS_COARSE_LOCATION permission did not exist before M so....
+                // the ACCESS_COARSE_LOCATION permission did not exist before M so....
                 permissions_granted = true;
             }
             startScanning();
@@ -209,6 +220,7 @@ public class MainActivity extends AppCompatActivity implements ScanResultsConsum
         }
     }
 
+    // Handles requesting permission to perform scanning from the user
     private void requestLocationPermission() {
         Log.i(Constants.TAG, "Location permission has NOT yet been granted. Requesting permission.");
         if (ActivityCompat.shouldShowRequestPermissionRationale(this,
@@ -259,6 +271,8 @@ public class MainActivity extends AppCompatActivity implements ScanResultsConsum
         toast.show();
     }
 
+    // Checks that permissions have been granted, clears the UI device list and
+    // then tells the BleScanner object to start scanning.
     private void startScanning() {
         if (permissions_granted) {
             runOnUiThread(new Runnable() {

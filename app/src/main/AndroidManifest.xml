@@ -2,8 +2,12 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.example.bletest">
 
+    <!--Says our application wants to use Bluetooth.-->
     <uses-permission android:name="android.permission.BLUETOOTH" />
+    <!--Allows us to determine whether Bluetooth is switched on or off and if we want to, ask the
+    user to switch it on.-->
     <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" />
+    <!--Is required if we want to scan for other devices.-->
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
 
     <application

@@ -25,12 +25,13 @@ public class BleScanner {
     private boolean scanning=false;
     private String device_name_start="";
 
+    // Class Constructor and Checking the Status of the Bluetooth Adapter
     public BleScanner(Context context) {
         this.context = context;
         final BluetoothManager bluetoothManager = (BluetoothManager)
                 context.getSystemService(Context.BLUETOOTH_SERVICE);
         bluetooth_adapter = bluetoothManager.getAdapter();
-// check bluetooth is available and on
+        // check bluetooth is available and on
         if (bluetooth_adapter == null || !bluetooth_adapter.isEnabled()) {
             Log.d(Constants.TAG, "Bluetooth is NOT switched on");
             Intent enableBtIntent = new Intent(
@@ -40,8 +41,9 @@ public class BleScanner {
         }
         Log.d(Constants.TAG, "Bluetooth is switched on");
     }
-// end of class
 
+    // Requires a time limit for scanning to be specified as an argument as well as an instance of
+    // our ScanResultsConsumer interface so that callbacks can be made to its methods during scanning.
     public void startScanning(final ScanResultsConsumer scan_results_consumer, long
             stop_after_ms) {
         if (scanning) {
@@ -77,12 +79,16 @@ public class BleScanner {
         scanner.startScan(filters, settings, scan_callback);
     }
 
+    // Simple method by which scanning can be terminated.
     public void stopScanning() {
         setScanning(false);
         Log.d(Constants.TAG, "Stopping scanning");
         scanner.stopScan(scan_callback);
     }
 
+    // ScanCallback object that our BluetoothLeScanner object needs;
+    // onScanResult is going to be called every time the scanner collects a Bluetooth advertising
+    // packet which complies with our filtering criteria.
     private ScanCallback scan_callback = new ScanCallback() {
         public void onScanResult(int callbackType, final ScanResult result) {
             if (!scanning) {
@@ -97,6 +103,8 @@ public class BleScanner {
         return scanning;
     }
 
+    // Informs the ScanResultsConsumer object of changes in the scanning state;
+    // This is useful so that the UI can be updated accordingly.
     void setScanning(boolean scanning) {
         this.scanning = scanning;
         if (!scanning) {
