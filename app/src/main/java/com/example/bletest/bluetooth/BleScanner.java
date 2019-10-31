@@ -70,8 +70,8 @@ public class BleScanner {
         filters = new ArrayList<ScanFilter>();
 
         // Creating a filter
-        ScanFilter filter = new ScanFilter.Builder().setDeviceName("advert").build();
-        filters.add(filter);
+        //ScanFilter filter = new ScanFilter.Builder().setDeviceName("").build();
+        //filters.add(filter);
 
         ScanSettings settings = new
                 ScanSettings.Builder().setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY).build();
