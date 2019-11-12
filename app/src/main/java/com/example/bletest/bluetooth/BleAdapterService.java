@@ -8,7 +8,9 @@ import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothGatt;
 import android.bluetooth.BluetoothGattCallback;
+import android.bluetooth.BluetoothGattCharacteristic;
 import android.bluetooth.BluetoothGattDescriptor;
+import android.bluetooth.BluetoothGattService;
 import android.bluetooth.BluetoothManager;
 import android.bluetooth.BluetoothProfile;
 import android.content.Intent;
@@ -23,6 +25,8 @@ import android.os.Message;
 import android.util.Log;
 
 import com.example.bletest.Constants;
+
+import java.util.List;
 
 
 public class BleAdapterService extends Service {
@@ -72,6 +76,20 @@ public class BleAdapterService extends Service {
     public static final String PARCEL_VALUE = "VALUE";
     public static final String PARCEL_RSSI = "RSSI";
     public static final String PARCEL_TEXT = "TEXT";
+
+    // Service UUIDs
+    public static String IMMEDIATE_ALERT_SERVICE_UUID = "00001802-0000-1000-8000-00805F9B34FB";
+    public static String LINK_LOSS_SERVICE_UUID = "00001803-0000-1000-8000-00805F9B34FB";
+    public static String TX_POWER_SERVICE_UUID = "00001804-0000-1000-8000-00805F9B34FB";
+    public static String PROXIMITY_MONITORING_SERVICE_UUID = "3E099910-293F-11E4-93BD-AFD0FE6D1DFD";
+    public static String HEALTH_THERMOMETER_SERVICE_UUID = "00001809-0000-1000-8000-00805F9B34FB";
+    //
+    // service characteristics
+    public static String ALERT_LEVEL_CHARACTERISTIC = "00002A06-0000-1000-8000-00805F9B34FB";
+    public static String CLIENT_PROXIMITY_CHARACTERISTIC = "3E099911-293F-11E4-93BD-AFD0FE6D1DFD";
+    public static String TEMPERATURE_MEASUREMENT_CHARACTERISTIC = "00002A1C-0000-1000-8000-00805F9B34FB";
+    public static String CLIENT_CHARACTERISTIC_CONFIG = "00002902-0000-1000-8000-00805f9b34fb";
+
 
     // Set activity that will receive the messages
     public void setActivityHandler(Handler handler) {
@@ -169,7 +187,159 @@ public class BleAdapterService extends Service {
                 }
             }
         }
+
+        @Override
+        public void onServicesDiscovered(BluetoothGatt gatt, int status) {
+            sendConsoleMessage("Services Discovered");
+            Message msg = Message.obtain(activity_handler,
+                    GATT_SERVICES_DISCOVERED);
+            msg.sendToTarget();
+        }
+
+        //These methods will be called when Bluetooth read and write procedures have completed and
+        // they’ll pass results to the Activity using our message handler object.
+        @Override
+        public void onCharacteristicRead(BluetoothGatt gatt,
+                                         BluetoothGattCharacteristic characteristic, int status)
+        {
+            if (status == BluetoothGatt.GATT_SUCCESS) {
+                Bundle bundle = new Bundle();
+                bundle.putString(PARCEL_CHARACTERISTIC_UUID, characteristic.getUuid()
+                        .toString());
+                bundle.putString(PARCEL_SERVICE_UUID,
+                        characteristic.getService().getUuid().toString());
+                bundle.putByteArray(PARCEL_VALUE, characteristic.getValue());
+                Message msg = Message.obtain(activity_handler,
+                        GATT_CHARACTERISTIC_READ);
+                msg.setData(bundle);
+                msg.sendToTarget();
+            } else {
+                Log.d(Constants.TAG, "failed to read characteristic:"+characteristic.getUuid().toString()+
+                        " of service "+characteristic.getService().getUuid().toString()+" : status="+status);
+                sendConsoleMessage("characteristic read err:"+status);
+            }
+        }
+        //
+        public void onCharacteristicWrite(BluetoothGatt gatt,
+                                          BluetoothGattCharacteristic characteristic, int status)
+        {
+            Log.d(Constants.TAG, "onCharacteristicWrite");
+            if (status == BluetoothGatt.GATT_SUCCESS) {
+                Bundle bundle = new Bundle();
+                bundle.putString(PARCEL_CHARACTERISTIC_UUID,
+                        characteristic.getUuid().toString());
+                bundle.putString(PARCEL_SERVICE_UUID,
+                        characteristic.getService().getUuid().toString());
+                bundle.putByteArray(PARCEL_VALUE, characteristic.getValue());
+                Message msg = Message.obtain(activity_handler, GATT_CHARACTERISTIC_WRITTEN);
+                msg.setData(bundle);
+                msg.sendToTarget();
+            } else {
+                sendConsoleMessage("characteristic write err:" + status);
+            }
+        }
+
+        // Read RSSI
+        @Override
+        public void onReadRemoteRssi(BluetoothGatt gatt, int rssi, int status) {
+            if (status == BluetoothGatt.GATT_SUCCESS) {
+                sendConsoleMessage("RSSI read OK");
+                Bundle bundle = new Bundle();
+                bundle.putInt(PARCEL_RSSI, rssi);
+                Message msg = Message
+                        .obtain(activity_handler, GATT_REMOTE_RSSI);
+                msg.setData(bundle);
+                msg.sendToTarget();
+            } else {
+                sendConsoleMessage("RSSI read err:"+status);
+            }
+        }
+
     };
 
+    // Discover services
+    public void discoverServices() {
+        if (bluetooth_adapter == null || bluetooth_gatt == null) {
+            return;
+        }
+        Log.d(Constants.TAG,"Discovering GATT services");
+        bluetooth_gatt.discoverServices();
+    }
+
+    // Receive list of discovered services
+    public List<BluetoothGattService> getSupportedGattServices() {
+        if (bluetooth_gatt == null)
+            return null;
+        return bluetooth_gatt.getServices();
+    }
+
+    // Activity call this methods to initiate reading from or wirting to a characteristic,
+    // specified using a service UUID and a characteristic UUID.
+    public boolean readCharacteristic(String serviceUuid,
+                                      String characteristicUuid) {
+
+        Log.d(Constants.TAG,"readCharacteristic:"+characteristicUuid+" of service "
+                +serviceUuid);
+
+        if (bluetooth_adapter == null || bluetooth_gatt == null) {
+            sendConsoleMessage("readCharacteristic: bluetooth_adapter|bluetooth_gatt null");
+            return false;
+        }
+
+        BluetoothGattService gattService = bluetooth_gatt
+                .getService(java.util.UUID.fromString(serviceUuid));
+
+        if (gattService == null) {
+            sendConsoleMessage("readCharacteristic: gattService null");
+            return false;
+        }
+
+        BluetoothGattCharacteristic gattChar = gattService
+                .getCharacteristic(java.util.UUID.fromString(characteristicUuid));
+
+        if (gattChar == null) {
+            sendConsoleMessage("readCharacteristic: gattChar null");
+            return false;
+        }
+
+        return bluetooth_gatt.readCharacteristic(gattChar);
+    }
+    //
+    public boolean writeCharacteristic(String serviceUuid,
+                                       String characteristicUuid, byte[] value) {
+        Log.d(Constants.TAG,"writeCharacteristic:"+characteristicUuid+" of service "
+                +serviceUuid);
+        if (bluetooth_adapter == null || bluetooth_gatt == null) {
+            sendConsoleMessage("writeCharacteristic: bluetooth_adapter|bluetooth_gatt null");
+            return false;
+        }
+
+        BluetoothGattService gattService = bluetooth_gatt
+                .getService(java.util.UUID.fromString(serviceUuid));
+
+        if (gattService == null) {
+            sendConsoleMessage("writeCharacteristic: gattService null");
+            return false;
+        }
+
+        BluetoothGattCharacteristic gattChar = gattService
+                .getCharacteristic(java.util.UUID.fromString(characteristicUuid));
+
+        if (gattChar == null) {
+            sendConsoleMessage("writeCharacteristic: gattChar null");
+            return false;
+        }
+
+        gattChar.setValue(value);
+        return bluetooth_gatt.writeCharacteristic(gattChar);
+    }
+
+    // Read RRSI
+    public void readRemoteRssi() {
+        if (bluetooth_adapter == null || bluetooth_gatt == null) {
+            return;
+        }
+        bluetooth_gatt.readRemoteRssi();
+    }
 
 }
